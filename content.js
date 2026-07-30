@@ -4,16 +4,21 @@ const CLICK_MARKER_ID = "__viewport-relay-click";
 let role = "idle";
 let scrollFrame = null;
 let lastScrollSentAt = 0;
+let layoutGeneration = 0;
 
 chrome.runtime.onMessage.addListener((message) => {
   if (message.type === "set-role") {
     role = message.role;
+    layoutGeneration = Number(message.layoutGeneration || 0);
     renderRoleBadge(message);
     return;
   }
 
   if (message.type === "report-viewport") {
-    reportViewport(0);
+    const requestedGeneration = Number(message.layoutGeneration || layoutGeneration);
+    if (requestedGeneration < layoutGeneration) return;
+    layoutGeneration = requestedGeneration;
+    reportViewport(0, layoutGeneration);
     return;
   }
 
@@ -58,23 +63,24 @@ document.addEventListener("click", (event) => {
   }).catch(() => {});
 }, true);
 
-window.addEventListener("resize", debounce(() => reportViewport(0), 120));
-reportViewport(0);
+window.addEventListener("resize", debounce(() => reportViewport(0, layoutGeneration), 120));
+reportViewport(0, layoutGeneration);
 
-function reportViewport(attempt = 0) {
+function reportViewport(attempt = 0, generation = layoutGeneration) {
   chrome.runtime.sendMessage({
     type: "pane-ready",
+    layoutGeneration: generation,
     viewport: {
       width: window.innerWidth,
       height: window.innerHeight
     }
   }).then((response) => {
     if (!response?.registered && attempt < 5) {
-      setTimeout(() => reportViewport(attempt + 1), 160 * (attempt + 1));
+      setTimeout(() => reportViewport(attempt + 1, generation), 160 * (attempt + 1));
     }
   }).catch(() => {
     if (attempt < 5) {
-      setTimeout(() => reportViewport(attempt + 1), 160 * (attempt + 1));
+      setTimeout(() => reportViewport(attempt + 1, generation), 160 * (attempt + 1));
     }
   });
 }

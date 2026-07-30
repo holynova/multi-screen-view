@@ -11,9 +11,11 @@ const form = document.getElementById("launch-form");
 const deviceList = document.getElementById("device-list");
 const urlInput = document.getElementById("url");
 const formError = document.getElementById("form-error");
+const arrangeButton = document.getElementById("arrange-windows");
 const closeButton = document.getElementById("close-session");
 const statusCopy = document.getElementById("status-copy");
 const submitButton = form.querySelector("button[type='submit']");
+let arrangeBusy = false;
 
 renderDevices();
 if (IS_EXTENSION) {
@@ -70,6 +72,27 @@ closeButton.addEventListener("click", async () => {
   closeButton.disabled = true;
   await chrome.runtime.sendMessage({ type: "close-session" }).catch(() => {});
   renderSession({ active: false, panes: [] });
+});
+
+arrangeButton.addEventListener("click", async () => {
+  if (!IS_EXTENSION || arrangeBusy) return;
+  clearError();
+  arrangeBusy = true;
+  arrangeButton.disabled = true;
+  arrangeButton.textContent = "正在整理";
+  const response = await chrome.runtime.sendMessage({ type: "arrange-session" })
+    .catch((error) => ({ ok: false, error: error.message }));
+  arrangeButton.textContent = "整理窗口";
+
+  if (!response?.ok) {
+    showError(response?.error || "无法整理多屏窗口");
+    arrangeBusy = false;
+    arrangeButton.disabled = false;
+    return;
+  }
+
+  arrangeBusy = false;
+  renderSession(response.session);
 });
 
 deviceList.addEventListener("change", (event) => {
@@ -133,6 +156,7 @@ function renderWebPreview() {
   urlInput.readOnly = true;
   submitButton.lastChild.textContent = " 获取扩展";
   statusCopy.textContent = "当前为网页预览。安装 Chrome 扩展后即可启动多屏同步。";
+  arrangeButton.disabled = true;
   closeButton.disabled = true;
 }
 
@@ -140,6 +164,7 @@ function renderSession(session) {
   const panes = session?.panes || [];
   if (!session?.active || !panes.length) {
     statusCopy.textContent = "还没有启动多屏会话。";
+    arrangeButton.disabled = true;
     closeButton.disabled = true;
     return;
   }
@@ -147,6 +172,7 @@ function renderSession(session) {
   const master = panes.find((pane) => pane.role === "master");
   const calibrated = panes.filter((pane) => pane.calibrated).length;
   statusCopy.textContent = `${panes.length} 个窗口正在运行，主屏为 ${master?.label || "第一个窗口"}，${calibrated}/${panes.length} 个视口已校准。`;
+  arrangeButton.disabled = arrangeBusy;
   closeButton.disabled = false;
 }
 

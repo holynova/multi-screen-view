@@ -5,6 +5,7 @@
   "description": "Open one website in multiple Chrome windows and mirror the master window's scroll and clicks.",
   "permissions": [
     "storage",
+    "system.display",
     "tabs",
     "windows"
   ],

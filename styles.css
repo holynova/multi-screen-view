@@ -422,6 +422,13 @@ button:disabled {
   align-items: center;
 }
 
+.status-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 .scope-note {
   display: grid;
   grid-template-columns: 110px minmax(0, 1fr);
@@ -521,6 +528,10 @@ button:disabled {
 
   .secondary-button {
     justify-self: start;
+  }
+
+  .status-actions {
+    justify-content: flex-start;
   }
 }
 

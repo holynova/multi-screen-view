@@ -1,13 +1,25 @@
+importScripts("layout.js");
+
 const SESSION_KEY = "viewportRelaySession";
 const LAUNCHER_PATH = "index.html";
 const WINDOW_GAP = 14;
 const WINDOW_CHROME_WIDTH = 16;
 const WINDOW_CHROME_HEIGHT = 46;
+const WINDOW_MARGIN = 16;
+const MAX_DEVICE_COUNT = 8;
+const CONTROL_MESSAGES = new Set(["launch-session", "close-session", "arrange-session", "get-session"]);
 let calibrationQueue = Promise.resolve();
 
 chrome.action.onClicked.addListener(openLauncher);
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (!message || typeof message !== "object") return false;
+
+  if (CONTROL_MESSAGES.has(message.type) && !isLauncherSender(sender)) {
+    sendResponse({ ok: false, error: "此操作只能从扩展启动页发起" });
+    return false;
+  }
+
   if (message.type === "launch-session") {
     launchSession(message.payload, sender.tab?.windowId)
       .then((session) => sendResponse({ ok: true, session: publicSession(session) }))
@@ -22,6 +34,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === "arrange-session") {
+    const arrangement = calibrationQueue.then(() => arrangeSession(sender.tab?.windowId));
+    calibrationQueue = arrangement.catch(() => {});
+    arrangement
+      .then((session) => sendResponse({ ok: true, session: publicSession(session) }))
+      .catch((error) => sendResponse({ ok: false, error: error.message }));
+    return true;
+  }
+
   if (message.type === "get-session") {
     getSession().then((session) => sendResponse({ ok: true, session: publicSession(session) }));
     return true;
@@ -29,7 +50,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === "pane-ready" && sender.tab?.id) {
     calibrationQueue = calibrationQueue
-      .then(() => configurePane(sender.tab.id, message.viewport))
+      .then(() => configurePane(sender.tab.id, message.viewport, message.layoutGeneration))
       .then((registered) => sendResponse({ registered }))
       .catch(() => sendResponse({ registered: false }));
     return true;
@@ -64,9 +85,9 @@ async function openLauncher() {
   await chrome.tabs.create({ url: launcherUrl });
 }
 
-async function launchSession(payload, anchorWindowId) {
+async function launchSession(payload = {}, anchorWindowId) {
   const url = normalizeUrl(payload.url);
-  const devices = Array.isArray(payload.devices) ? payload.devices : [];
+  const devices = normalizeDevices(payload.devices);
 
   if (!devices.length) {
     throw new Error("请至少选择一个屏幕尺寸");
@@ -77,42 +98,24 @@ async function launchSession(payload, anchorWindowId) {
   const anchorWindow = Number.isInteger(anchorWindowId)
     ? await chrome.windows.get(anchorWindowId)
     : await chrome.windows.getCurrent();
-  const startLeft = Math.max(0, Number.isFinite(anchorWindow.left) ? anchorWindow.left : 0);
-  const startTop = Math.max(0, Number.isFinite(anchorWindow.top) ? anchorWindow.top : 0);
-  const availableWidth = Math.max(anchorWindow.width || 1280, 760);
-  const availableContentHeight = Math.max(560, (anchorWindow.height || 900) - WINDOW_CHROME_HEIGHT - 12);
+  const workArea = await getWorkArea(anchorWindow);
   const panes = {};
   const createdWindowIds = [];
-  const tallestDevice = Math.max(...devices.map((device) => device.height));
-  const commonDisplayScale = Math.min(1, availableContentHeight / tallestDevice);
-  const layouts = devices.map((device) => {
-    const displayScale = commonDisplayScale;
-    return {
-      device,
-      displayScale,
-      outerWidth: Math.round(device.width * displayScale) + WINDOW_CHROME_WIDTH,
-      outerHeight: Math.round(device.height * displayScale) + WINDOW_CHROME_HEIGHT
-    };
-  });
-  const totalWidth = layouts.reduce((sum, layout) => sum + layout.outerWidth, 0)
-    + WINDOW_GAP * Math.max(0, layouts.length - 1);
-  let sequentialLeft = startLeft;
+  const layout = createLayout(devices, workArea);
+  assertLayoutPossible(layout);
 
   try {
-    for (const [index, layout] of layouts.entries()) {
-      const { device, displayScale, outerWidth, outerHeight } = layout;
-      const left = totalWidth <= availableWidth
-        ? sequentialLeft
-        : startLeft + Math.round(index * Math.max(0, availableWidth - outerWidth) / Math.max(1, layouts.length - 1));
+    for (const [index, device] of devices.entries()) {
+      const bounds = layout.windows.find((windowLayout) => windowLayout.index === index);
 
       const created = await chrome.windows.create({
         url,
         type: "popup",
         focused: false,
-        left,
-        top: startTop,
-        width: outerWidth,
-        height: outerHeight
+        left: bounds.left,
+        top: bounds.top,
+        width: bounds.width,
+        height: bounds.height
       });
 
       const tabId = created.tabs?.[0]?.id;
@@ -121,7 +124,7 @@ async function launchSession(payload, anchorWindowId) {
       }
 
       await chrome.tabs.setZoomSettings(tabId, { mode: "automatic", scope: "per-tab" });
-      await chrome.tabs.setZoom(tabId, displayScale);
+      await chrome.tabs.setZoom(tabId, layout.scale);
 
       createdWindowIds.push(created.id);
       panes[String(tabId)] = {
@@ -130,13 +133,12 @@ async function launchSession(payload, anchorWindowId) {
         label: device.label,
         targetWidth: device.width,
         targetHeight: device.height,
-        displayScale,
+        displayScale: layout.scale,
         calibrated: false,
         calibrationAttempts: 0,
         index
       };
 
-      sequentialLeft += outerWidth + WINDOW_GAP;
     }
   } catch (error) {
     await Promise.all(createdWindowIds.map((windowId) => chrome.windows.remove(windowId).catch(() => {})));
@@ -152,6 +154,8 @@ async function launchSession(payload, anchorWindowId) {
     url,
     masterTabId: masterPane.tabId,
     panes,
+    layoutPass: 0,
+    layoutGeneration: 0,
     startedAt: Date.now()
   };
 
@@ -160,6 +164,91 @@ async function launchSession(payload, anchorWindowId) {
   await chrome.windows.update(masterPane.windowId, { focused: true });
   await notifyLauncher(session);
   return session;
+}
+
+async function arrangeSession(anchorWindowId) {
+  const session = await getSession();
+  const panes = Object.values(session.panes || {}).sort((a, b) => a.index - b.index);
+  if (!session.active || !panes.length) {
+    throw new Error("还没有可整理的多屏会话");
+  }
+
+  const masterPane = panes.find((pane) => pane.tabId === session.masterTabId) || panes[0];
+  const referenceWindowId = masterPane.windowId || anchorWindowId;
+  const anchorWindow = await chrome.windows.get(referenceWindowId);
+  const workArea = await getWorkArea(anchorWindow);
+  const layout = createLayout(panes.map((pane) => ({
+    id: String(pane.tabId),
+    width: pane.targetWidth,
+    height: pane.targetHeight,
+    frameWidth: pane.frameWidth,
+    frameHeight: pane.frameHeight
+  })), workArea);
+  assertLayoutPossible(layout);
+
+  session.layoutPass = 0;
+  await applyLayout(session, panes, layout);
+
+  await chrome.windows.update(masterPane.windowId, { focused: true });
+  await notifyLauncher(session);
+  return session;
+}
+
+async function applyLayout(session, panes, layout) {
+  session.layoutGeneration = (session.layoutGeneration || 0) + 1;
+  panes.forEach((pane) => {
+    pane.displayScale = layout.scale;
+    pane.calibrated = false;
+    pane.calibrationAttempts = 0;
+    session.panes[String(pane.tabId)] = pane;
+  });
+  await setSession(session);
+
+  await Promise.all(panes.map(async (pane, index) => {
+    const bounds = layout.windows.find((windowLayout) => windowLayout.index === index);
+    await chrome.tabs.setZoom(pane.tabId, layout.scale);
+    await chrome.windows.update(pane.windowId, {
+      state: "normal",
+      left: bounds.left,
+      top: bounds.top,
+      width: bounds.width,
+      height: bounds.height
+    });
+  }));
+
+  setTimeout(() => {
+    panes.forEach((pane) => chrome.tabs.sendMessage(pane.tabId, {
+      type: "report-viewport",
+      layoutGeneration: session.layoutGeneration
+    }).catch(() => {}));
+  }, 220);
+}
+
+async function getWorkArea(anchorWindow) {
+  try {
+    const displays = await chrome.system.display.getInfo();
+    return ViewportRelayLayout.chooseWorkArea(displays, anchorWindow);
+  } catch {
+    return {
+      left: Number.isFinite(anchorWindow.left) ? anchorWindow.left : 0,
+      top: Number.isFinite(anchorWindow.top) ? anchorWindow.top : 0,
+      width: Math.max(anchorWindow.width || 1280, 760),
+      height: Math.max(anchorWindow.height || 800, 560)
+    };
+  }
+}
+
+function createLayout(devices, workArea) {
+  return ViewportRelayLayout.buildLayoutPlan(
+    devices.map((device, index) => ({ ...device, index })),
+    workArea,
+    {
+      gap: WINDOW_GAP,
+      margin: WINDOW_MARGIN,
+      chromeWidth: WINDOW_CHROME_WIDTH,
+      chromeHeight: WINDOW_CHROME_HEIGHT
+    }
+  );
 }
 
 async function closeSession() {
@@ -179,27 +268,40 @@ async function closeSession() {
   await notifyLauncher(emptySession());
 }
 
-async function configurePane(tabId, viewport) {
+async function configurePane(tabId, viewport, layoutGeneration) {
   const session = await getSession();
   const pane = session.panes?.[String(tabId)];
   if (!pane) return false;
+  if (Number(layoutGeneration || 0) !== Number(session.layoutGeneration || 0)) return true;
 
   await sendRole(tabId, session, pane);
 
-  const widthDelta = pane.targetWidth - Number(viewport?.width || 0);
-  const heightDelta = pane.targetHeight - Number(viewport?.height || 0);
+  const viewportWidth = Number(viewport?.width || 0);
+  const viewportHeight = Number(viewport?.height || 0);
+  const currentWindow = await chrome.windows.get(pane.windowId);
+  const displayScale = pane.displayScale || 1;
+  pane.frameWidth = Math.max(0, currentWindow.width - Math.round(viewportWidth * displayScale));
+  pane.frameHeight = Math.max(0, currentWindow.height - Math.round(viewportHeight * displayScale));
+  const widthDelta = pane.targetWidth - viewportWidth;
+  const heightDelta = pane.targetHeight - viewportHeight;
   const closeEnough = Math.abs(widthDelta) <= 1 && Math.abs(heightDelta) <= 1;
 
   if (closeEnough || pane.calibrationAttempts >= 3) {
     pane.calibrated = closeEnough;
     session.panes[String(tabId)] = pane;
     await setSession(session);
+
+    const panes = Object.values(session.panes).sort((a, b) => a.index - b.index);
+    const allSettled = panes.every((item) => item.calibrated || item.calibrationAttempts >= 3);
+    if (allSettled && session.layoutPass < 1) {
+      await refineMeasuredLayout(session, panes);
+      return true;
+    }
+
     await notifyLauncher(session);
     return true;
   }
 
-  const currentWindow = await chrome.windows.get(pane.windowId);
-  const displayScale = pane.displayScale || 1;
   pane.calibrationAttempts += 1;
   session.panes[String(tabId)] = pane;
   await setSession(session);
@@ -209,11 +311,39 @@ async function configurePane(tabId, viewport) {
     height: Math.max(180, currentWindow.height + Math.round(heightDelta * displayScale))
   });
 
+  const currentGeneration = session.layoutGeneration || 0;
   setTimeout(() => {
-    chrome.tabs.sendMessage(tabId, { type: "report-viewport" }).catch(() => {});
+    chrome.tabs.sendMessage(tabId, {
+      type: "report-viewport",
+      layoutGeneration: currentGeneration
+    }).catch(() => {});
   }, 180);
 
   return true;
+}
+
+async function refineMeasuredLayout(session, panes) {
+  const masterPane = panes.find((pane) => pane.tabId === session.masterTabId) || panes[0];
+  const anchorWindow = await chrome.windows.get(masterPane.windowId);
+  const workArea = await getWorkArea(anchorWindow);
+  const layout = createLayout(panes.map((pane) => ({
+    id: String(pane.tabId),
+    width: pane.targetWidth,
+    height: pane.targetHeight,
+    frameWidth: pane.frameWidth,
+    frameHeight: pane.frameHeight
+  })), workArea);
+
+  if (!layout.possible) {
+    session.layoutPass = 1;
+    await setSession(session);
+    await notifyLauncher(session);
+    return;
+  }
+
+  session.layoutPass = 1;
+  await applyLayout(session, panes, layout);
+  await notifyLauncher(session);
 }
 
 async function relayMasterEvent(senderTabId, message) {
@@ -285,7 +415,8 @@ async function sendRole(tabId, session, pane) {
     role: tabId === session.masterTabId ? "master" : "follower",
     label: pane.label,
     targetWidth: pane.targetWidth,
-    targetHeight: pane.targetHeight
+    targetHeight: pane.targetHeight,
+    layoutGeneration: session.layoutGeneration || 0
   }).catch(() => {});
 }
 
@@ -312,6 +443,34 @@ function normalizeUrl(value) {
   return parsed.href;
 }
 
+function normalizeDevices(value) {
+  const devices = Array.isArray(value) ? value : [];
+  if (devices.length > MAX_DEVICE_COUNT) {
+    throw new Error(`一次最多打开 ${MAX_DEVICE_COUNT} 个屏幕`);
+  }
+
+  return devices.map((device) => {
+    const width = Number(device?.width);
+    const height = Number(device?.height);
+    if (!Number.isFinite(width) || width < 240 || width > 1000
+      || !Number.isFinite(height) || height < 320 || height > 2000) {
+      throw new Error("屏幕尺寸超出原型支持范围");
+    }
+
+    return {
+      id: String(device.id || "screen").slice(0, 80),
+      label: String(device.label || "屏幕").slice(0, 80),
+      width: Math.round(width),
+      height: Math.round(height)
+    };
+  });
+}
+
+function isLauncherSender(sender) {
+  const launcherUrl = chrome.runtime.getURL(LAUNCHER_PATH);
+  return sender.url === launcherUrl || sender.tab?.url === launcherUrl;
+}
+
 function publicSession(session) {
   const panes = Object.values(session.panes || {}).sort((a, b) => a.index - b.index);
   return {
@@ -330,7 +489,21 @@ function publicSession(session) {
 }
 
 function emptySession() {
-  return { active: false, url: "", masterTabId: null, panes: {}, startedAt: null };
+  return {
+    active: false,
+    url: "",
+    masterTabId: null,
+    panes: {},
+    layoutPass: 0,
+    layoutGeneration: 0,
+    startedAt: null
+  };
+}
+
+function assertLayoutPossible(layout) {
+  if (!layout.possible) {
+    throw new Error("当前显示器空间不足，请减少屏幕数量后重试");
+  }
 }
 
 async function getSession() {
