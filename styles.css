@@ -274,9 +274,78 @@ input[type="url"]:focus-visible {
 .primary-button:focus-visible,
 .secondary-button:focus-visible,
 .master-choice input:focus-visible + span,
-.screen-toggle input:focus-visible + span {
+.screen-toggle input:focus-visible + span,
+.mode-choice input:focus-visible + span {
   outline: 3px solid oklch(0.61 0.19 36 / 0.24);
   outline-offset: 2px;
+}
+
+.click-mode {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  margin: 18px 0 0 46px;
+  padding: 0;
+  border: 0;
+}
+
+.mode-label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.mode-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  max-width: 540px;
+  width: 100%;
+  padding: 4px;
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+}
+
+.mode-choice {
+  position: relative;
+  cursor: pointer;
+}
+
+.mode-choice input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.mode-choice > span {
+  display: grid;
+  gap: 4px;
+  min-height: 54px;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  transition: color 140ms ease-out, background-color 140ms ease-out;
+}
+
+.mode-choice strong {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.mode-choice small {
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.mode-choice input:checked + span {
+  color: oklch(0.83 0.01 70);
+  background: var(--ink);
+}
+
+.mode-choice input:checked + span strong {
+  color: var(--surface);
 }
 
 button:disabled {
@@ -488,13 +557,19 @@ button:disabled {
   }
 
   .url-row,
-  .device-list {
+  .device-list,
+  .click-mode {
     margin-left: 0;
     padding-left: 0;
   }
 
   .url-row {
     display: grid;
+  }
+
+  .click-mode {
+    grid-template-columns: 1fr;
+    gap: 8px;
   }
 
   .primary-button {

@@ -15,7 +15,7 @@
         <div class="header-copy">
           <p class="eyebrow">Chrome prototype · 0.1</p>
           <h1>Viewport Relay</h1>
-          <p class="lede">一个主屏，多个跟随窗口。只同步页面滚动距离与点击位置。</p>
+          <p class="lede">一个主屏，多个跟随窗口。同步滚动，并让副屏点击同一个 DOM 元素。</p>
         </div>
         <a class="repo-link" href="https://github.com/holynova/multi-screen-view" target="_blank" rel="noreferrer">GitHub repo ↗</a>
       </header>
@@ -38,6 +38,19 @@
               <span class="button-dot" aria-hidden="true"></span>
               启动多屏
             </button>
+          </div>
+          <div id="click-mode" class="click-mode" role="group" aria-labelledby="click-mode-label">
+            <span id="click-mode-label" class="mode-label">点击同步</span>
+            <div class="mode-options">
+              <label class="mode-choice">
+                <input type="radio" name="click-mode" value="dom" checked>
+                <span><strong>DOM 元素匹配</strong><small>默认，跨布局寻找同一控件</small></span>
+              </label>
+              <label class="mode-choice">
+                <input type="radio" name="click-mode" value="coordinate">
+                <span><strong>相对坐标</strong><small>适合 Canvas 和可视化页面</small></span>
+              </label>
+            </div>
           </div>
           <p id="form-error" class="form-error" role="alert"></p>
         </section>
@@ -71,7 +84,7 @@
 
       <aside class="scope-note">
         <span>原型边界</span>
-        <p>只同步顶层页面滚动。点击使用视口相对坐标，所以响应式布局差异较大时可能点到不同元素。Chrome 内置页面和扩展商店页面无法注入同步脚本。</p>
+        <p>DOM 模式按元素身份、语义属性和结构路径匹配，页面差异过大时可能无法命中；Canvas 等无稳定 DOM 的页面可切换到相对坐标。Chrome 内置页面和扩展商店页面无法注入同步脚本。</p>
       </aside>
     </main>
 

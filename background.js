@@ -7,7 +7,23 @@ const WINDOW_CHROME_WIDTH = 16;
 const WINDOW_CHROME_HEIGHT = 46;
 const WINDOW_MARGIN = 16;
 const MAX_DEVICE_COUNT = 8;
-const CONTROL_MESSAGES = new Set(["launch-session", "close-session", "arrange-session", "get-session"]);
+const CONTROL_MESSAGES = new Set([
+  "launch-session",
+  "close-session",
+  "arrange-session",
+  "get-session",
+  "set-click-mode"
+]);
+const TARGET_ATTRIBUTES = new Set([
+  "data-testid",
+  "data-test",
+  "data-cy",
+  "name",
+  "aria-label",
+  "href",
+  "role",
+  "type"
+]);
 let calibrationQueue = Promise.resolve();
 
 chrome.action.onClicked.addListener(openLauncher);
@@ -45,6 +61,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === "get-session") {
     getSession().then((session) => sendResponse({ ok: true, session: publicSession(session) }));
+    return true;
+  }
+
+  if (message.type === "set-click-mode") {
+    const modeUpdate = calibrationQueue.then(() => setClickMode(message.clickMode));
+    calibrationQueue = modeUpdate.catch(() => {});
+    modeUpdate
+      .then((session) => sendResponse({ ok: true, session: publicSession(session) }))
+      .catch((error) => sendResponse({ ok: false, error: error.message }));
     return true;
   }
 
@@ -88,6 +113,7 @@ async function openLauncher() {
 async function launchSession(payload = {}, anchorWindowId) {
   const url = normalizeUrl(payload.url);
   const devices = normalizeDevices(payload.devices);
+  const clickMode = normalizeClickMode(payload.clickMode);
 
   if (!devices.length) {
     throw new Error("请至少选择一个屏幕尺寸");
@@ -154,6 +180,7 @@ async function launchSession(payload = {}, anchorWindowId) {
     url,
     masterTabId: masterPane.tabId,
     panes,
+    clickMode,
     layoutPass: 0,
     layoutGeneration: 0,
     startedAt: Date.now()
@@ -162,6 +189,16 @@ async function launchSession(payload = {}, anchorWindowId) {
   await setSession(session);
   await updatePaneRoles(session);
   await chrome.windows.update(masterPane.windowId, { focused: true });
+  await notifyLauncher(session);
+  return session;
+}
+
+async function setClickMode(value) {
+  const session = await getSession();
+  if (!session.active) throw new Error("还没有运行中的多屏会话");
+  session.clickMode = normalizeClickMode(value);
+  await setSession(session);
+  await updatePaneRoles(session);
   await notifyLauncher(session);
   return session;
 }
@@ -350,13 +387,30 @@ async function relayMasterEvent(senderTabId, message) {
   const session = await getSession();
   if (!session.active || senderTabId !== session.masterTabId) return;
 
-  const targetTabIds = Object.values(session.panes)
+  const candidateTabIds = Object.values(session.panes)
     .map((pane) => pane.tabId)
     .filter((tabId) => tabId !== senderTabId);
+  let targetTabIds = candidateTabIds;
 
-  const outgoing = message.type === "master-scroll"
-    ? { type: "apply-scroll", x: message.x, y: message.y }
-    : { type: "apply-click", xRatio: message.xRatio, yRatio: message.yRatio };
+  let outgoing;
+  if (message.type === "master-scroll") {
+    outgoing = { type: "apply-scroll", x: message.x, y: message.y };
+  } else {
+    const pageTargets = await samePageTabs(senderTabId, candidateTabIds);
+    targetTabIds = pageTargets.tabIds;
+    if (normalizeClickMode(session.clickMode) === "coordinate") {
+      outgoing = {
+        type: "apply-click",
+        xRatio: message.xRatio,
+        yRatio: message.yRatio,
+        pageKey: pageTargets.pageKey
+      };
+    } else {
+      const target = sanitizeTargetDescriptor(message.target);
+      if (!target) return;
+      outgoing = { type: "apply-dom-click", target, pageKey: pageTargets.pageKey };
+    }
+  }
 
   await Promise.all(targetTabIds.map((tabId) => chrome.tabs.sendMessage(tabId, outgoing).catch(() => {})));
 }
@@ -416,6 +470,7 @@ async function sendRole(tabId, session, pane) {
     label: pane.label,
     targetWidth: pane.targetWidth,
     targetHeight: pane.targetHeight,
+    clickMode: normalizeClickMode(session.clickMode),
     layoutGeneration: session.layoutGeneration || 0
   }).catch(() => {});
 }
@@ -466,6 +521,89 @@ function normalizeDevices(value) {
   });
 }
 
+function normalizeClickMode(value) {
+  return value === "coordinate" ? "coordinate" : "dom";
+}
+
+function sanitizeTargetDescriptor(value) {
+  if (!value || typeof value !== "object") return null;
+  const tag = String(value.tag || "").toLowerCase();
+  if (!/^[a-z][a-z0-9-]*$/.test(tag)) return null;
+
+  const attributes = {};
+  Object.entries(value.attributes || {}).forEach(([key, attributeValue]) => {
+    if (!TARGET_ATTRIBUTES.has(key)) return;
+    const cleaned = key === "href"
+      ? sanitizeHref(attributeValue)
+      : String(attributeValue || "").slice(0, 200);
+    if (cleaned) attributes[key] = cleaned;
+  });
+  const id = String(value.id || "").slice(0, 160);
+  const selectors = [];
+  if (id) selectors.push({ kind: "identity", value: `#${escapeIdentifier(id)}` });
+  Object.entries(attributes).forEach(([key, attributeValue]) => {
+    selectors.push({
+      kind: "attribute",
+      value: `${tag}[${key}="${escapeAttribute(attributeValue)}"]`
+    });
+  });
+
+  return {
+    version: 1,
+    tag,
+    id,
+    text: String(value.text || "").slice(0, 160),
+    classNames: (Array.isArray(value.classNames) ? value.classNames : [])
+      .slice(0, 6)
+      .map((className) => String(className).slice(0, 64)),
+    attributes,
+    selectors
+  };
+}
+
+async function samePageTabs(sourceTabId, candidateTabIds) {
+  const sourceTab = await chrome.tabs.get(sourceTabId).catch(() => null);
+  const sourcePageKey = pageKey(sourceTab?.url);
+  if (!sourcePageKey) return { tabIds: [], pageKey: "" };
+
+  const matches = await Promise.all(candidateTabIds.map(async (tabId) => {
+    const tab = await chrome.tabs.get(tabId).catch(() => null);
+    return pageKey(tab?.url) === sourcePageKey ? tabId : null;
+  }));
+  return { tabIds: matches.filter(Number.isInteger), pageKey: sourcePageKey };
+}
+
+function pageKey(value) {
+  try {
+    const url = new URL(value);
+    return /^https?:$/.test(url.protocol)
+      ? `${url.origin}${url.pathname}${url.search}`
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function escapeIdentifier(value) {
+  return String(value).replace(/[^a-zA-Z0-9_-]/g, (character) => `\\${character.codePointAt(0).toString(16)} `);
+}
+
+function escapeAttribute(value) {
+  return String(value)
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, "\\\"")
+    .replace(/[\n\r\f]/g, " ");
+}
+
+function sanitizeHref(value) {
+  try {
+    const url = new URL(String(value || ""));
+    return /^https?:$/.test(url.protocol) ? `${url.origin}${url.pathname}`.slice(0, 200) : "";
+  } catch {
+    return "";
+  }
+}
+
 function isLauncherSender(sender) {
   const launcherUrl = chrome.runtime.getURL(LAUNCHER_PATH);
   return sender.url === launcherUrl || sender.tab?.url === launcherUrl;
@@ -476,6 +614,7 @@ function publicSession(session) {
   return {
     active: Boolean(session.active && panes.length),
     url: session.url || "",
+    clickMode: normalizeClickMode(session.clickMode),
     masterTabId: session.masterTabId || null,
     panes: panes.map((pane) => ({
       tabId: pane.tabId,
@@ -494,6 +633,7 @@ function emptySession() {
     url: "",
     masterTabId: null,
     panes: {},
+    clickMode: "dom",
     layoutPass: 0,
     layoutGeneration: 0,
     startedAt: null

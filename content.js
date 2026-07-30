@@ -5,11 +5,13 @@ let role = "idle";
 let scrollFrame = null;
 let lastScrollSentAt = 0;
 let layoutGeneration = 0;
+let clickMode = "dom";
 
 chrome.runtime.onMessage.addListener((message) => {
   if (message.type === "set-role") {
     role = message.role;
     layoutGeneration = Number(message.layoutGeneration || 0);
+    clickMode = message.clickMode === "coordinate" ? "coordinate" : "dom";
     renderRoleBadge(message);
     return;
   }
@@ -28,7 +30,14 @@ chrome.runtime.onMessage.addListener((message) => {
   }
 
   if (message.type === "apply-click") {
+    if (!matchesPage(message.pageKey)) return;
     replayClick(message.xRatio, message.yRatio);
+    return;
+  }
+
+  if (message.type === "apply-dom-click") {
+    if (!matchesPage(message.pageKey)) return;
+    replayDomClick(message.target);
   }
 });
 
@@ -50,14 +59,16 @@ window.addEventListener("scroll", () => {
 }, { passive: true });
 
 document.addEventListener("click", (event) => {
-  if (role !== "master" || event.button !== 0) return;
+  if (role !== "master" || event.button !== 0 || !event.isTrusted) return;
 
+  const sourceElement = event.composedPath?.().find((item) => item?.nodeType === 1) || event.target;
   const xRatio = clamp(event.clientX / Math.max(window.innerWidth, 1), 0, 1);
   const yRatio = clamp(event.clientY / Math.max(window.innerHeight, 1), 0, 1);
   showClickMarker(event.clientX, event.clientY);
 
   chrome.runtime.sendMessage({
     type: "master-click",
+    target: ViewportRelayTargeting.describeElement(sourceElement),
     xRatio,
     yRatio
   }).catch(() => {});
@@ -91,8 +102,23 @@ function replayClick(xRatio, yRatio) {
   const rawTarget = document.elementFromPoint(x, y);
   const target = rawTarget?.closest?.("a, button, input, select, textarea, summary, [role='button'], [onclick]") || rawTarget;
 
-  showClickMarker(x, y);
+  activateElement(target, x, y);
+}
+
+function replayDomClick(descriptor) {
+  const target = ViewportRelayTargeting.findMatchingElement(descriptor);
   if (!target) return;
+  const bounds = target.getBoundingClientRect();
+  const x = bounds.width > 0 ? bounds.left + bounds.width / 2 : null;
+  const y = bounds.height > 0 ? bounds.top + bounds.height / 2 : null;
+  activateElement(target, x, y);
+}
+
+function activateElement(target, markerX, markerY) {
+  if (Number.isFinite(markerX) && Number.isFinite(markerY)) {
+    showClickMarker(markerX, markerY);
+  }
+  if (!isActionable(target)) return;
 
   if (typeof target.focus === "function") {
     target.focus({ preventScroll: true });
@@ -106,10 +132,45 @@ function replayClick(xRatio, yRatio) {
   target.dispatchEvent(new MouseEvent("click", {
     bubbles: true,
     cancelable: true,
-    clientX: x,
-    clientY: y,
+    clientX: Number.isFinite(markerX) ? markerX : 0,
+    clientY: Number.isFinite(markerY) ? markerY : 0,
     view: window
   }));
+}
+
+function isActionable(target) {
+  if (!target || target.disabled || target.getAttribute?.("aria-disabled") === "true") return false;
+  const bounds = target.getBoundingClientRect?.();
+  if (!bounds || bounds.width <= 0 || bounds.height <= 0) return false;
+  if (bounds.right <= 0 || bounds.bottom <= 0 || bounds.left >= window.innerWidth || bounds.top >= window.innerHeight) {
+    return false;
+  }
+
+  for (let current = target; current; current = current.parentElement) {
+    if (current.hidden || current.inert || current.getAttribute?.("aria-hidden") === "true") return false;
+    const style = window.getComputedStyle?.(current);
+    if (style && (
+      style.display === "none"
+      || style.visibility === "hidden"
+      || Number(style.opacity) <= 0.01
+      || style.pointerEvents === "none"
+    )) return false;
+  }
+
+  const centerX = Math.min(Math.max(bounds.left + bounds.width / 2, 0), window.innerWidth - 1);
+  const centerY = Math.min(Math.max(bounds.top + bounds.height / 2, 0), window.innerHeight - 1);
+  const hit = document.elementFromPoint(centerX, centerY);
+  return Boolean(hit && (hit === target || target.contains?.(hit)));
+}
+
+function matchesPage(expectedPageKey) {
+  if (!expectedPageKey) return false;
+  try {
+    const url = new URL(window.location.href);
+    return `${url.origin}${url.pathname}${url.search}` === expectedPageKey;
+  } catch {
+    return false;
+  }
 }
 
 function renderRoleBadge(config) {
@@ -118,7 +179,8 @@ function renderRoleBadge(config) {
 
   const badge = document.createElement("div");
   badge.id = RELAY_BADGE_ID;
-  badge.textContent = `主屏 · ${config.targetWidth}×${config.targetHeight}`;
+  const modeLabel = clickMode === "dom" ? "DOM" : "坐标";
+  badge.textContent = `主屏 · ${config.targetWidth}×${config.targetHeight} · ${modeLabel}`;
   Object.assign(badge.style, {
     position: "fixed",
     top: "10px",

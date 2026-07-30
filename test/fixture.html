@@ -18,16 +18,24 @@
       p { margin: 0; line-height: 1.7; }
       .counter {
         position: fixed;
-        left: 50%;
-        top: 50%;
         min-width: 150px;
         min-height: 54px;
         border: 0;
         border-radius: 8px;
         color: white;
         background: #9a341f;
-        transform: translate(-50%, -50%);
         font: 700 15px/1 -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+      }
+      .dom-target { left: 24px; top: 22%; }
+      .coordinate-target { left: 50%; top: 50%; transform: translate(-50%, -50%); background: #334155; }
+      @media (min-width: 391px) and (max-width: 407px) {
+        .dom-target { left: auto; right: 24px; top: 72%; }
+      }
+      @media (min-width: 408px) and (max-width: 430px) {
+        .dom-target { left: auto; right: 24px; top: 24%; }
+      }
+      @media (min-width: 431px) {
+        .dom-target { left: 24px; top: auto; bottom: 12%; }
       }
       .ruler {
         display: grid;
@@ -37,22 +45,29 @@
       }
     </style>
   </head>
-  <body data-click-count="0">
+  <body data-dom-click-count="0" data-coordinate-click-count="0">
     <header>
       <h1>同步测试页</h1>
-      <p>固定按钮用于验证相对坐标点击，长页面用于验证绝对滚动距离。</p>
+      <p>不同位置的按钮用于验证 DOM 匹配，居中按钮用于验证相对坐标。</p>
     </header>
-    <button id="click-target" class="counter" type="button">点击次数 0</button>
+    <button id="dom-target" class="counter dom-target" data-testid="responsive-action" type="button">DOM 点击 0</button>
+    <button id="coordinate-target" class="counter coordinate-target" type="button">坐标点击 0</button>
     <div class="ruler" aria-hidden="true">
       <span>0400 px</span><span>0800 px</span><span>1200 px</span><span>1600 px</span>
       <span>2000 px</span><span>2400 px</span><span>2800 px</span><span>3200 px</span>
     </div>
     <script>
-      const button = document.getElementById("click-target");
-      button.addEventListener("click", () => {
-        const count = Number(document.body.dataset.clickCount) + 1;
-        document.body.dataset.clickCount = String(count);
-        button.textContent = `点击次数 ${count}`;
+      const domButton = document.getElementById("dom-target");
+      const coordinateButton = document.getElementById("coordinate-target");
+      domButton.addEventListener("click", () => {
+        const count = Number(document.body.dataset.domClickCount) + 1;
+        document.body.dataset.domClickCount = String(count);
+        domButton.textContent = `DOM 点击 ${count}`;
+      });
+      coordinateButton.addEventListener("click", () => {
+        const count = Number(document.body.dataset.coordinateClickCount) + 1;
+        document.body.dataset.coordinateClickCount = String(count);
+        coordinateButton.textContent = `坐标点击 ${count}`;
       });
     </script>
   </body>

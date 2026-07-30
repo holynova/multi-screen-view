@@ -11,11 +11,13 @@ const form = document.getElementById("launch-form");
 const deviceList = document.getElementById("device-list");
 const urlInput = document.getElementById("url");
 const formError = document.getElementById("form-error");
+const clickModeField = document.getElementById("click-mode");
 const arrangeButton = document.getElementById("arrange-windows");
 const closeButton = document.getElementById("close-session");
 const statusCopy = document.getElementById("status-copy");
 const submitButton = form.querySelector("button[type='submit']");
 let arrangeBusy = false;
+let activeSession = false;
 
 renderDevices();
 if (IS_EXTENSION) {
@@ -35,6 +37,7 @@ form.addEventListener("submit", async (event) => {
 
   const devices = selectedDevices();
   const master = document.querySelector("input[name='master']:checked")?.value;
+  const clickMode = selectedClickMode();
 
   if (!urlInput.value.trim()) {
     showError("请输入要测试的网址");
@@ -55,7 +58,7 @@ form.addEventListener("submit", async (event) => {
   setBusy(true);
   const response = await chrome.runtime.sendMessage({
     type: "launch-session",
-    payload: { url: urlInput.value, devices, masterId: master }
+    payload: { url: urlInput.value, devices, masterId: master, clickMode }
   }).catch((error) => ({ ok: false, error: error.message }));
   setBusy(false);
 
@@ -64,6 +67,22 @@ form.addEventListener("submit", async (event) => {
     return;
   }
 
+  renderSession(response.session);
+});
+
+clickModeField.addEventListener("change", async (event) => {
+  if (!IS_EXTENSION || !activeSession || !event.target.matches("input[name='click-mode']")) return;
+  clearError();
+  const response = await chrome.runtime.sendMessage({
+    type: "set-click-mode",
+    clickMode: selectedClickMode()
+  }).catch((error) => ({ ok: false, error: error.message }));
+
+  if (!response?.ok) {
+    showError(response?.error || "无法切换点击同步模式");
+    await refreshSession();
+    return;
+  }
   renderSession(response.session);
 });
 
@@ -146,6 +165,12 @@ function selectedDevices() {
   });
 }
 
+function selectedClickMode() {
+  return document.querySelector("input[name='click-mode']:checked")?.value === "coordinate"
+    ? "coordinate"
+    : "dom";
+}
+
 async function refreshSession() {
   const response = await chrome.runtime.sendMessage({ type: "get-session" }).catch(() => null);
   if (response?.ok) renderSession(response.session);
@@ -163,15 +188,21 @@ function renderWebPreview() {
 function renderSession(session) {
   const panes = session?.panes || [];
   if (!session?.active || !panes.length) {
+    activeSession = false;
     statusCopy.textContent = "还没有启动多屏会话。";
     arrangeButton.disabled = true;
     closeButton.disabled = true;
     return;
   }
 
+  activeSession = true;
+  const clickMode = session.clickMode === "coordinate" ? "coordinate" : "dom";
+  const modeInput = document.querySelector(`input[name='click-mode'][value='${clickMode}']`);
+  if (modeInput) modeInput.checked = true;
   const master = panes.find((pane) => pane.role === "master");
   const calibrated = panes.filter((pane) => pane.calibrated).length;
-  statusCopy.textContent = `${panes.length} 个窗口正在运行，主屏为 ${master?.label || "第一个窗口"}，${calibrated}/${panes.length} 个视口已校准。`;
+  const modeLabel = clickMode === "dom" ? "DOM 元素匹配" : "相对坐标";
+  statusCopy.textContent = `${panes.length} 个窗口正在运行，主屏为 ${master?.label || "第一个窗口"}，点击模式为 ${modeLabel}，${calibrated}/${panes.length} 个视口已校准。`;
   arrangeButton.disabled = arrangeBusy;
   closeButton.disabled = false;
 }
