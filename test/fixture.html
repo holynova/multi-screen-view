@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Viewport Relay test fixture</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 4200px;
+        font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+        color: #25211e;
+        background: repeating-linear-gradient(#f5f1e9 0 399px, #e7dfd2 400px 401px);
+      }
+      header { padding: 32px; }
+      h1 { margin: 0 0 8px; font-size: 28px; }
+      p { margin: 0; line-height: 1.7; }
+      .counter {
+        position: fixed;
+        left: 50%;
+        top: 50%;
+        min-width: 150px;
+        min-height: 54px;
+        border: 0;
+        border-radius: 8px;
+        color: white;
+        background: #9a341f;
+        transform: translate(-50%, -50%);
+        font: 700 15px/1 -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+      }
+      .ruler {
+        display: grid;
+        gap: 360px;
+        padding: 200px 24px 80px;
+        font: 600 13px/1 ui-monospace, monospace;
+      }
+    </style>
+  </head>
+  <body data-click-count="0">
+    <header>
+      <h1>同步测试页</h1>
+      <p>固定按钮用于验证相对坐标点击，长页面用于验证绝对滚动距离。</p>
+    </header>
+    <button id="click-target" class="counter" type="button">点击次数 0</button>
+    <div class="ruler" aria-hidden="true">
+      <span>0400 px</span><span>0800 px</span><span>1200 px</span><span>1600 px</span>
+      <span>2000 px</span><span>2400 px</span><span>2800 px</span><span>3200 px</span>
+    </div>
+    <script>
+      const button = document.getElementById("click-target");
+      button.addEventListener("click", () => {
+        const count = Number(document.body.dataset.clickCount) + 1;
+        document.body.dataset.clickCount = String(count);
+        button.textContent = `点击次数 ${count}`;
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,26 @@
+{
+  "name": "multi-screen-view",
+  "version": "0.1.0",
+  "description": "Synchronize scrolling, clicks, and navigation across multiple iPhone-sized Chrome windows.",
+  "private": true,
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "check": "node --check background.js && node --check content.js && node --check launcher.js && node -e \"JSON.parse(require('fs').readFileSync('manifest.json', 'utf8'))\"",
+    "serve": "python3 -m http.server 8765 --bind 127.0.0.1",
+    "test": "npm run check"
+  },
+  "keywords": [
+    "chrome-extension",
+    "responsive-design",
+    "viewport"
+  ],
+  "author": "holynova",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/holynova/multi-screen-view.git"
+  },
+  "homepage": "https://holynova.github.io/multi-screen-view/"
+}

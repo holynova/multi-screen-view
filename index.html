@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Viewport Relay</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">跳到主要内容</a>
+    <main id="main-content" class="shell">
+      <header class="masthead">
+        <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div class="header-copy">
+          <p class="eyebrow">Chrome prototype · 0.1</p>
+          <h1>Viewport Relay</h1>
+          <p class="lede">一个主屏，多个跟随窗口。只同步页面滚动距离与点击位置。</p>
+        </div>
+        <a class="repo-link" href="https://github.com/holynova/multi-screen-view" target="_blank" rel="noreferrer">GitHub repo ↗</a>
+      </header>
+
+      <form id="launch-form" class="workspace" novalidate>
+        <section class="url-section" aria-labelledby="url-heading">
+          <div class="section-heading">
+            <span class="step">01</span>
+            <div>
+              <h2 id="url-heading">测试地址</h2>
+              <p>目标页面会直接在独立 Chrome 窗口中打开。</p>
+            </div>
+          </div>
+          <div class="url-row">
+            <label class="field grow">
+              <span>URL</span>
+              <input id="url" name="url" type="url" value="https://example.com" autocomplete="url" required>
+            </label>
+            <button class="primary-button" type="submit">
+              <span class="button-dot" aria-hidden="true"></span>
+              启动多屏
+            </button>
+          </div>
+          <p id="form-error" class="form-error" role="alert"></p>
+        </section>
+
+        <section class="device-section" aria-labelledby="device-heading">
+          <div class="section-heading">
+            <span class="step">02</span>
+            <div>
+              <h2 id="device-heading">屏幕组合</h2>
+              <p>选中的主屏会在最前面打开，关闭后自动切换到下一个屏幕。</p>
+            </div>
+          </div>
+
+          <div id="device-list" class="device-list"></div>
+        </section>
+
+        <section class="status-section" aria-labelledby="status-heading">
+          <div class="section-heading compact">
+            <span class="step">03</span>
+            <div>
+              <h2 id="status-heading">运行状态</h2>
+              <p id="status-copy">还没有启动多屏会话。</p>
+            </div>
+          </div>
+          <button id="close-session" class="secondary-button" type="button" disabled>关闭全部窗口</button>
+        </section>
+      </form>
+
+      <aside class="scope-note">
+        <span>原型边界</span>
+        <p>只同步顶层页面滚动。点击使用视口相对坐标，所以响应式布局差异较大时可能点到不同元素。Chrome 内置页面和扩展商店页面无法注入同步脚本。</p>
+      </aside>
+    </main>
+
+    <script src="launcher.js"></script>
+  </body>
+</html>
