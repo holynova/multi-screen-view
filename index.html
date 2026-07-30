@@ -65,6 +65,30 @@
           </div>
 
           <div id="device-list" class="device-list"></div>
+
+          <div class="custom-device-builder" aria-labelledby="custom-device-heading">
+            <div class="custom-device-copy">
+              <strong id="custom-device-heading">添加自定义尺寸</strong>
+              <span>保存在当前浏览器，下次打开仍可使用</span>
+            </div>
+            <div class="custom-device-fields">
+              <label class="compact-field custom-name-field">
+                <span>名称，可选</span>
+                <input id="custom-device-name" type="text" maxlength="32" placeholder="例如 iPad Mini">
+              </label>
+              <label class="compact-field">
+                <span>宽度</span>
+                <input id="custom-device-width" type="number" inputmode="numeric" min="240" max="1000" placeholder="390">
+              </label>
+              <span class="dimension-separator" aria-hidden="true">×</span>
+              <label class="compact-field">
+                <span>高度</span>
+                <input id="custom-device-height" type="number" inputmode="numeric" min="320" max="2000" placeholder="844">
+              </label>
+              <button id="add-custom-device" class="secondary-button add-device-button" type="button">添加尺寸</button>
+            </div>
+            <p id="custom-device-error" class="custom-device-error" role="alert"></p>
+          </div>
         </section>
 
         <section class="status-section" aria-labelledby="status-heading">
@@ -76,8 +100,11 @@
             </div>
           </div>
           <div class="status-actions">
+            <button id="focus-master" class="secondary-button" type="button" disabled>聚焦主屏</button>
+            <button id="reload-session" class="secondary-button" type="button" disabled>全部刷新</button>
+            <button id="toggle-sync" class="secondary-button" type="button" disabled>暂停同步</button>
             <button id="arrange-windows" class="secondary-button" type="button" disabled>整理窗口</button>
-            <button id="close-session" class="secondary-button" type="button" disabled>关闭全部窗口</button>
+            <button id="close-session" class="secondary-button danger-button" type="button" disabled>关闭全部</button>
           </div>
         </section>
       </form>
@@ -88,6 +115,7 @@
       </aside>
     </main>
 
+    <script src="devices.js"></script>
     <script src="launcher.js"></script>
   </body>
 </html>

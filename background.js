@@ -12,7 +12,10 @@ const CONTROL_MESSAGES = new Set([
   "close-session",
   "arrange-session",
   "get-session",
-  "set-click-mode"
+  "set-click-mode",
+  "focus-master",
+  "reload-session",
+  "toggle-sync"
 ]);
 const TARGET_ATTRIBUTES = new Set([
   "data-testid",
@@ -37,22 +40,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === "launch-session") {
-    launchSession(message.payload, sender.tab?.windowId)
+    enqueueSessionOperation(() => launchSession(message.payload, sender.tab?.windowId))
       .then((session) => sendResponse({ ok: true, session: publicSession(session) }))
       .catch((error) => sendResponse({ ok: false, error: error.message }));
     return true;
   }
 
   if (message.type === "close-session") {
-    closeSession()
-      .then(() => sendResponse({ ok: true }))
+    enqueueSessionOperation(closeSession)
+      .then((session) => sendResponse({ ok: true, session: publicSession(session) }))
       .catch((error) => sendResponse({ ok: false, error: error.message }));
     return true;
   }
 
   if (message.type === "arrange-session") {
-    const arrangement = calibrationQueue.then(() => arrangeSession(sender.tab?.windowId));
-    calibrationQueue = arrangement.catch(() => {});
+    const arrangement = enqueueSessionOperation(() => arrangeSession(sender.tab?.windowId));
     arrangement
       .then((session) => sendResponse({ ok: true, session: publicSession(session) }))
       .catch((error) => sendResponse({ ok: false, error: error.message }));
@@ -65,17 +67,32 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === "set-click-mode") {
-    const modeUpdate = calibrationQueue.then(() => setClickMode(message.clickMode));
-    calibrationQueue = modeUpdate.catch(() => {});
+    const modeUpdate = enqueueSessionOperation(() => setClickMode(message.clickMode));
     modeUpdate
       .then((session) => sendResponse({ ok: true, session: publicSession(session) }))
       .catch((error) => sendResponse({ ok: false, error: error.message }));
     return true;
   }
 
+  if (message.type === "focus-master") {
+    focusMaster()
+      .then((session) => sendResponse({ ok: true, session: publicSession(session) }))
+      .catch((error) => sendResponse({ ok: false, error: error.message }));
+    return true;
+  }
+
+  if (message.type === "reload-session" || message.type === "toggle-sync") {
+    const action = enqueueSessionOperation(() => (
+      message.type === "reload-session" ? reloadSession() : toggleSync()
+    ));
+    action
+      .then((session) => sendResponse({ ok: true, session: publicSession(session) }))
+      .catch((error) => sendResponse({ ok: false, error: error.message }));
+    return true;
+  }
+
   if (message.type === "pane-ready" && sender.tab?.id) {
-    calibrationQueue = calibrationQueue
-      .then(() => configurePane(sender.tab.id, message.viewport, message.layoutGeneration))
+    enqueueSessionOperation(() => configurePane(sender.tab.id, message.viewport, message.layoutGeneration))
       .then((registered) => sendResponse({ registered }))
       .catch(() => sendResponse({ registered: false }));
     return true;
@@ -88,12 +105,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (!changeInfo.url) return;
-  syncMasterNavigation(tabId, changeInfo.url).catch(() => {});
+  enqueueSessionOperation(() => syncMasterNavigation(tabId, changeInfo.url)).catch(() => {});
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
-  removePane(tabId).catch(() => {});
+  enqueueSessionOperation(() => removePane(tabId)).catch(() => {});
 });
+
+function enqueueSessionOperation(operation) {
+  const action = calibrationQueue.then(operation);
+  calibrationQueue = action.catch(() => {});
+  return action;
+}
 
 async function openLauncher() {
   const launcherUrl = chrome.runtime.getURL(LAUNCHER_PATH);
@@ -181,6 +204,7 @@ async function launchSession(payload = {}, anchorWindowId) {
     masterTabId: masterPane.tabId,
     panes,
     clickMode,
+    paused: false,
     layoutPass: 0,
     layoutGeneration: 0,
     startedAt: Date.now()
@@ -201,6 +225,103 @@ async function setClickMode(value) {
   await updatePaneRoles(session);
   await notifyLauncher(session);
   return session;
+}
+
+async function focusMaster() {
+  const session = await getSession();
+  const pane = session.panes?.[String(session.masterTabId)];
+  if (!session.active || !pane) throw new Error("还没有运行中的主屏");
+  await chrome.windows.update(pane.windowId, { focused: true });
+  await chrome.tabs.update(pane.tabId, { active: true });
+  return session;
+}
+
+async function reloadSession() {
+  const session = await getSession();
+  const panes = Object.values(session.panes || {});
+  if (!session.active || !panes.length) throw new Error("还没有运行中的多屏会话");
+
+  panes.forEach((pane) => {
+    pane.calibrated = false;
+    pane.calibrationAttempts = 0;
+    session.panes[String(pane.tabId)] = pane;
+  });
+  await setSession(session);
+  await notifyLauncher(session);
+  await Promise.all(panes.map((pane) => chrome.tabs.reload(pane.tabId).catch(() => {})));
+  return session;
+}
+
+async function toggleSync() {
+  const session = await getSession();
+  const panes = Object.values(session.panes || {});
+  if (!session.active || !panes.length) throw new Error("还没有运行中的多屏会话");
+
+  if (!session.paused) {
+    session.paused = true;
+    await setSession(session);
+    await updatePaneRoles(session);
+    await notifyLauncher(session);
+    return session;
+  }
+
+  const masterTab = await chrome.tabs.get(session.masterTabId).catch(() => null);
+  if (masterTab?.url && /^https?:/.test(masterTab.url)) session.url = masterTab.url;
+  await setSession(session);
+
+  await Promise.all(panes.map(async (pane) => {
+    const tab = await chrome.tabs.get(pane.tabId).catch(() => null);
+    if (pane.tabId !== session.masterTabId && tab?.url !== session.url) {
+      await chrome.tabs.update(pane.tabId, { url: session.url }).catch(() => {});
+    }
+    await waitForTabComplete(pane.tabId);
+  }));
+
+  session.paused = false;
+  await setSession(session);
+  await updatePaneRoles(session);
+  await alignFollowersToMasterScroll(session, panes);
+  await notifyLauncher(session);
+  return session;
+}
+
+async function alignFollowersToMasterScroll(session, panes) {
+  const position = await chrome.tabs.sendMessage(session.masterTabId, {
+    type: "read-scroll-position"
+  }).catch(() => null);
+  if (!Number.isFinite(position?.x) || !Number.isFinite(position?.y)) return;
+
+  await Promise.all(panes
+    .filter((pane) => pane.tabId !== session.masterTabId)
+    .map((pane) => chrome.tabs.sendMessage(pane.tabId, {
+      type: "apply-scroll",
+      x: position.x,
+      y: position.y
+    }).catch(() => {})));
+}
+
+async function waitForTabComplete(tabId, timeout = 6000) {
+  await new Promise((resolve) => {
+    let timer;
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      chrome.tabs.onUpdated.removeListener(listener);
+      clearTimeout(timer);
+      resolve();
+    };
+    const listener = (updatedTabId, changeInfo) => {
+      if (updatedTabId === tabId && changeInfo.status === "complete") finish();
+    };
+    chrome.tabs.onUpdated.addListener(listener);
+    timer = setTimeout(finish, timeout);
+    chrome.tabs.get(tabId)
+      .then((tab) => {
+        if (tab.status === "complete") finish();
+      })
+      .catch(finish);
+  });
 }
 
 async function arrangeSession(anchorWindowId) {
@@ -291,8 +412,9 @@ function createLayout(devices, workArea) {
 async function closeSession() {
   const session = await getSession();
   const windowIds = [...new Set(Object.values(session.panes || {}).map((pane) => pane.windowId))];
+  const closedSession = emptySession();
 
-  await setSession(emptySession());
+  await setSession(closedSession);
 
   await Promise.all(windowIds.map(async (windowId) => {
     try {
@@ -302,14 +424,21 @@ async function closeSession() {
     }
   }));
 
-  await notifyLauncher(emptySession());
+  await notifyLauncher(closedSession);
+  return closedSession;
 }
 
 async function configurePane(tabId, viewport, layoutGeneration) {
   const session = await getSession();
   const pane = session.panes?.[String(tabId)];
   if (!pane) return false;
-  if (Number(layoutGeneration || 0) !== Number(session.layoutGeneration || 0)) return true;
+  if (Number(layoutGeneration || 0) !== Number(session.layoutGeneration || 0)) {
+    await chrome.tabs.sendMessage(tabId, {
+      type: "report-viewport",
+      layoutGeneration: session.layoutGeneration || 0
+    }).catch(() => {});
+    return true;
+  }
 
   await sendRole(tabId, session, pane);
 
@@ -385,7 +514,7 @@ async function refineMeasuredLayout(session, panes) {
 
 async function relayMasterEvent(senderTabId, message) {
   const session = await getSession();
-  if (!session.active || senderTabId !== session.masterTabId) return;
+  if (!session.active || session.paused || senderTabId !== session.masterTabId) return;
 
   const candidateTabIds = Object.values(session.panes)
     .map((pane) => pane.tabId)
@@ -417,7 +546,7 @@ async function relayMasterEvent(senderTabId, message) {
 
 async function syncMasterNavigation(tabId, url) {
   const session = await getSession();
-  if (!session.active || tabId !== session.masterTabId || session.url === url) return;
+  if (!session.active || session.paused || tabId !== session.masterTabId || session.url === url) return;
 
   session.url = url;
   await setSession(session);
@@ -471,6 +600,7 @@ async function sendRole(tabId, session, pane) {
     targetWidth: pane.targetWidth,
     targetHeight: pane.targetHeight,
     clickMode: normalizeClickMode(session.clickMode),
+    paused: Boolean(session.paused),
     layoutGeneration: session.layoutGeneration || 0
   }).catch(() => {});
 }
@@ -615,6 +745,7 @@ function publicSession(session) {
     active: Boolean(session.active && panes.length),
     url: session.url || "",
     clickMode: normalizeClickMode(session.clickMode),
+    paused: Boolean(session.paused),
     masterTabId: session.masterTabId || null,
     panes: panes.map((pane) => ({
       tabId: pane.tabId,
@@ -634,6 +765,7 @@ function emptySession() {
     masterTabId: null,
     panes: {},
     clickMode: "dom",
+    paused: false,
     layoutPass: 0,
     layoutGeneration: 0,
     startedAt: null

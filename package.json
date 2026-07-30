@@ -7,7 +7,7 @@
     "test": "test"
   },
   "scripts": {
-    "check": "node --check layout.js && node --check targeting.js && node --check background.js && node --check content.js && node --check launcher.js && node -e \"JSON.parse(require('fs').readFileSync('manifest.json', 'utf8'))\"",
+    "check": "node --check layout.js && node --check devices.js && node --check targeting.js && node --check background.js && node --check content.js && node --check launcher.js && node -e \"JSON.parse(require('fs').readFileSync('manifest.json', 'utf8'))\"",
     "serve": "python3 -m http.server 8765 --bind 127.0.0.1",
     "test": "npm run check && node --test test/*.test.js"
   },

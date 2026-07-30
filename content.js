@@ -1,17 +1,20 @@
 const RELAY_BADGE_ID = "__viewport-relay-badge";
 const CLICK_MARKER_ID = "__viewport-relay-click";
+const MASTER_FRAME_ID = "__viewport-relay-master-frame";
 
 let role = "idle";
 let scrollFrame = null;
 let lastScrollSentAt = 0;
 let layoutGeneration = 0;
 let clickMode = "dom";
+let syncPaused = false;
 
-chrome.runtime.onMessage.addListener((message) => {
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === "set-role") {
     role = message.role;
     layoutGeneration = Number(message.layoutGeneration || 0);
     clickMode = message.clickMode === "coordinate" ? "coordinate" : "dom";
+    syncPaused = Boolean(message.paused);
     renderRoleBadge(message);
     return;
   }
@@ -29,6 +32,11 @@ chrome.runtime.onMessage.addListener((message) => {
     return;
   }
 
+  if (message.type === "read-scroll-position") {
+    sendResponse({ x: window.scrollX, y: window.scrollY });
+    return;
+  }
+
   if (message.type === "apply-click") {
     if (!matchesPage(message.pageKey)) return;
     replayClick(message.xRatio, message.yRatio);
@@ -42,7 +50,7 @@ chrome.runtime.onMessage.addListener((message) => {
 });
 
 window.addEventListener("scroll", () => {
-  if (role !== "master" || scrollFrame) return;
+  if (role !== "master" || syncPaused || scrollFrame) return;
 
   scrollFrame = requestAnimationFrame(() => {
     scrollFrame = null;
@@ -59,7 +67,7 @@ window.addEventListener("scroll", () => {
 }, { passive: true });
 
 document.addEventListener("click", (event) => {
-  if (role !== "master" || event.button !== 0 || !event.isTrusted) return;
+  if (role !== "master" || syncPaused || event.button !== 0 || !event.isTrusted) return;
 
   const sourceElement = event.composedPath?.().find((item) => item?.nodeType === 1) || event.target;
   const xRatio = clamp(event.clientX / Math.max(window.innerWidth, 1), 0, 1);
@@ -175,12 +183,28 @@ function matchesPage(expectedPageKey) {
 
 function renderRoleBadge(config) {
   document.getElementById(RELAY_BADGE_ID)?.remove();
+  document.getElementById(MASTER_FRAME_ID)?.remove();
   if (config.role !== "master") return;
+
+  const frame = document.createElement("div");
+  frame.id = MASTER_FRAME_ID;
+  frame.setAttribute("aria-hidden", "true");
+  Object.assign(frame.style, {
+    position: "fixed",
+    inset: "0",
+    zIndex: "2147483645",
+    pointerEvents: "none",
+    boxShadow: syncPaused
+      ? "inset 0 0 0 4px rgba(120, 113, 108, 0.84), inset 0 0 0 7px rgba(120, 113, 108, 0.16)"
+      : "inset 0 0 0 4px rgb(191, 61, 32), inset 0 0 0 7px rgba(225, 74, 42, 0.18)"
+  });
 
   const badge = document.createElement("div");
   badge.id = RELAY_BADGE_ID;
   const modeLabel = clickMode === "dom" ? "DOM" : "坐标";
-  badge.textContent = `主屏 · ${config.targetWidth}×${config.targetHeight} · ${modeLabel}`;
+  badge.textContent = syncPaused
+    ? `主屏 · ${config.targetWidth}×${config.targetHeight} · 同步暂停`
+    : `主屏 · ${config.targetWidth}×${config.targetHeight} · ${modeLabel}`;
   Object.assign(badge.style, {
     position: "fixed",
     top: "10px",
@@ -189,12 +213,13 @@ function renderRoleBadge(config) {
     pointerEvents: "none",
     padding: "7px 10px",
     borderRadius: "6px",
-    background: "rgba(28, 25, 23, 0.92)",
+    background: syncPaused ? "rgba(87, 83, 78, 0.94)" : "rgba(137, 41, 21, 0.95)",
     color: "rgba(255, 255, 255, 0.92)",
     boxShadow: "0 4px 16px rgba(0, 0, 0, 0.18)",
     font: "600 12px/1.2 -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif",
     letterSpacing: "0.01em"
   });
+  document.documentElement.appendChild(frame);
   document.documentElement.appendChild(badge);
 }
 
