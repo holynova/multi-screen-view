@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>隐私政策 · Viewport Relay</title>
+    <meta name="description" content="Viewport Relay Chrome 扩展隐私政策">
+    <link rel="icon" href="icons/icon32.png">
+    <link rel="stylesheet" href="legal.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#policy">跳到隐私政策</a>
+    <header class="legal-header">
+      <a class="brand" href="index.html" aria-label="返回 Viewport Relay">
+        <img src="icons/icon48.png" alt="">
+        <span>Viewport Relay</span>
+      </a>
+      <a href="https://github.com/holynova/multi-screen-view" target="_blank" rel="noreferrer">GitHub repo ↗</a>
+    </header>
+
+    <main id="policy" class="legal-shell">
+      <p class="eyebrow">Privacy policy · v1.0</p>
+      <h1>隐私政策</h1>
+      <p class="updated">生效日期：2026 年 7 月 31 日</p>
+
+      <section class="summary">
+        <strong>简要说明</strong>
+        <p>Viewport Relay 只在你的本机 Chrome 浏览器中处理同步所需的数据。我们不运营数据服务器，不收集分析数据，不出售数据，也不将数据用于广告。</p>
+      </section>
+
+      <section>
+        <h2>1. 扩展处理哪些数据</h2>
+        <p>当你主动启动多屏会话后，扩展会处理你输入或打开的页面 URL、窗口与显示器尺寸、滚动位置、点击位置，以及被点击元素的少量 DOM 属性和文本特征。后者可能包括元素标签、ID、类名、可访问名称、链接地址、表单类型和短文本，用于在不同尺寸页面中寻找同一控件。</p>
+        <p>扩展还会在本机保存你添加的自定义屏幕尺寸和隐私同意状态，并在当前浏览器会话中保存窗口、标签页、主屏和同步状态。</p>
+      </section>
+
+      <section>
+        <h2>2. 处理目的</h2>
+        <p>上述数据仅用于扩展的单一目的：在用户选择的多个 Chrome 窗口之间同步页面导航、滚动和点击，并管理这些窗口的位置与状态。</p>
+      </section>
+
+      <section>
+        <h2>3. 数据存储、传输与保留</h2>
+        <p>同步数据由 Chrome 扩展进程在同一台设备、同一浏览器会话内传递，不会发送给开发者或第三方服务器。会话状态随浏览器会话结束而清除。自定义尺寸和同意状态保存在 Chrome 本地存储中，直到你删除扩展数据或卸载扩展。</p>
+        <p>你访问的目标网站仍可能按照其自身的隐私政策处理数据，Viewport Relay 无法控制目标网站的行为。</p>
+      </section>
+
+      <section>
+        <h2>4. 分享、出售与广告</h2>
+        <p>我们不出售、出租或分享用户数据，不使用数据进行广告、信用评估或与扩展单一目的无关的分析。对用户数据的使用遵守 Chrome Web Store 用户数据政策及其 Limited Use 要求。</p>
+      </section>
+
+      <section>
+        <h2>5. 权限说明</h2>
+        <dl>
+          <div><dt>网站访问权限</dt><dd>在用户选择的网页中读取并同步 URL、滚动和点击，并跟随主屏导航。因工具需要测试用户输入的任意网站，权限范围为所有 HTTP 和 HTTPS 网站。</dd></div>
+          <div><dt>窗口</dt><dd>创建、排列、聚焦和关闭测试窗口。</dd></div>
+          <div><dt>显示器</dt><dd>读取当前显示器的可用工作区域，将所有测试窗口整理到同一屏幕内。</dd></div>
+          <div><dt>存储</dt><dd>在本机保存自定义尺寸、同意状态和当前会话状态。</dd></div>
+        </dl>
+      </section>
+
+      <section>
+        <h2>6. 你的选择</h2>
+        <p>首次启动多屏会话前，你需要主动确认页面中的数据处理说明。取消勾选会立即关闭运行中的测试窗口。你也可以清除扩展的站点数据或卸载扩展，以停止处理并删除本地数据。</p>
+      </section>
+
+      <section>
+        <h2>7. 安全与未成年人</h2>
+        <p>扩展不包含远程执行代码，代码随安装包提供。扩展不面向 13 岁以下儿童，也不会故意收集儿童信息。</p>
+      </section>
+
+      <section>
+        <h2>8. 政策变更与联系</h2>
+        <p>如本政策发生实质变更，我们会更新本页面的版本和生效日期。有关隐私、支持或删除数据的问题，请在 <a href="https://github.com/holynova/multi-screen-view/issues/new" target="_blank" rel="noreferrer">GitHub Issues</a> 联系项目维护者。请勿在公开 Issue 中提交敏感信息。</p>
+      </section>
+    </main>
+
+    <footer class="legal-footer">
+      <a href="index.html">返回产品页</a>
+      <a href="https://github.com/holynova/multi-screen-view/issues/new" target="_blank" rel="noreferrer">支持与反馈</a>
+    </footer>
+  </body>
+</html>

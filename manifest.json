@@ -1,26 +1,37 @@
 {
   "manifest_version": 3,
   "name": "Viewport Relay",
-  "version": "0.1.0",
-  "description": "Open one website in multiple Chrome windows and mirror the master window's scroll and clicks.",
+  "version": "1.0.0",
+  "description": "在多个移动端尺寸窗口中同步网页、滚动、导航与 DOM 点击，快速比较响应式布局。",
+  "homepage_url": "https://holynova.github.io/multi-screen-view/",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
   "permissions": [
     "storage",
     "system.display",
-    "tabs",
     "windows"
   ],
   "host_permissions": [
-    "<all_urls>"
+    "http://*/*",
+    "https://*/*"
   ],
   "background": {
     "service_worker": "background.js"
   },
   "action": {
-    "default_title": "Open Viewport Relay"
+    "default_title": "打开 Viewport Relay",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png"
+    }
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
+      "matches": ["http://*/*", "https://*/*"],
       "js": ["targeting.js", "content.js"],
       "run_at": "document_idle"
     }

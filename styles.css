@@ -349,6 +349,80 @@ input[type="url"]:focus-visible {
   color: var(--surface);
 }
 
+.data-consent {
+  display: grid;
+  gap: 8px;
+  margin: 18px 0 0 46px;
+  padding: 14px 16px;
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  background: oklch(0.945 0.025 54);
+}
+
+.consent-choice {
+  position: relative;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  cursor: pointer;
+}
+
+.consent-choice input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.consent-choice > span {
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  border: 1px solid var(--hairline);
+  border-radius: 3px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 2px var(--surface);
+}
+
+.consent-choice input:checked + span {
+  border-color: var(--accent-dark);
+  background: var(--accent-dark);
+}
+
+.consent-choice input:checked + span::after {
+  content: "";
+  display: block;
+  width: 7px;
+  height: 4px;
+  margin: 4px 0 0 4px;
+  border-left: 2px solid var(--surface);
+  border-bottom: 2px solid var(--surface);
+  transform: rotate(-45deg);
+}
+
+.consent-choice input:focus-visible + span {
+  outline: 3px solid oklch(0.61 0.19 36 / 0.24);
+  outline-offset: 2px;
+}
+
+.consent-choice strong {
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.data-consent p {
+  margin: 0 0 0 28px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.65;
+}
+
+.data-consent a,
+.site-footer a {
+  color: var(--accent-dark);
+  text-underline-offset: 3px;
+}
+
 button:disabled {
   cursor: not-allowed;
   opacity: 0.42;
@@ -634,6 +708,21 @@ button:disabled {
   margin-bottom: 0;
 }
 
+.site-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 22px 4px 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.site-footer nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
 @media (hover: hover) {
   .primary-button:hover:not(:disabled) { background: var(--accent); }
   .secondary-button:hover:not(:disabled) { background: oklch(0.9 0.016 72); }
@@ -674,6 +763,7 @@ button:disabled {
   .url-row,
   .device-list,
   .click-mode,
+  .data-consent,
   .custom-device-builder,
   .status-actions {
     margin-left: 0;
@@ -744,6 +834,10 @@ button:disabled {
 
   .scope-note {
     grid-template-columns: 1fr;
+  }
+
+  .site-footer {
+    display: grid;
   }
 
   .secondary-button {

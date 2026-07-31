@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Viewport Relay · Real session capture</title>
+    <link rel="icon" href="data:,">
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
+      body {
+        display: grid;
+        grid-template-columns: 340px minmax(0, 1fr);
+        gap: 52px;
+        padding: 56px 52px 46px;
+        color: #2d2926;
+        background: #f2eee7;
+        font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+      }
+      aside { display: flex; flex-direction: column; justify-content: space-between; padding: 4px 0 12px; }
+      .brand { display: flex; align-items: center; gap: 12px; font-size: 15px; font-weight: 800; }
+      .brand img { width: 44px; height: 44px; }
+      .eyebrow { margin: 0 0 14px; color: #97371f; font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+      h1 { margin: 0 0 18px; font-size: 55px; line-height: .98; letter-spacing: -.035em; }
+      .lede { margin: 0; color: #71675f; font-size: 16px; line-height: 1.75; }
+      .proof { display: grid; gap: 10px; color: #71675f; font-size: 12px; }
+      .proof span { display: flex; align-items: center; gap: 9px; }
+      .proof i { width: 10px; height: 10px; border-radius: 50%; background: #d64c2f; }
+      .proof span:last-child i { background: #a89d94; }
+      .screens { display: flex; align-items: center; justify-content: center; gap: 36px; min-width: 0; }
+      .screen { display: grid; gap: 11px; }
+      .screen-label { display: flex; justify-content: space-between; gap: 18px; color: #71675f; font-size: 11px; font-weight: 750; }
+      .capture-frame {
+        overflow: hidden;
+        border: 7px solid #fdfaf5;
+        border-radius: 26px;
+        background: #fdfaf5;
+        box-shadow: 0 14px 30px rgba(45, 41, 38, .13), 0 0 0 1px #cfc5ba;
+      }
+      .capture-frame img { display: block; width: 100%; height: 100%; object-fit: cover; }
+      .follower .capture-frame { width: 324px; height: 576px; }
+      .master .capture-frame { width: 278px; height: 604px; box-shadow: 0 14px 30px rgba(45, 41, 38, .15), 0 0 0 4px #d64c2f; }
+    </style>
+  </head>
+  <body>
+    <aside>
+      <div class="brand"><img src="../icons/icon48.png" alt="">Viewport Relay</div>
+      <div>
+        <p class="eyebrow">打包扩展实拍</p>
+        <h1>同一元素，不同位置。</h1>
+        <p class="lede">主屏完成一次 DOM 点击，跟随屏在不同响应式布局中找到并点击同一个控件。两边滚动位置保持一致。</p>
+      </div>
+      <div class="proof"><span><i></i>主屏，402×874 锈橙边框</span><span><i></i>跟随屏，375×667 同步状态</span></div>
+    </aside>
+    <main class="screens">
+      <section class="screen follower">
+        <div class="screen-label"><span>iPhone SE · 跟随屏</span><span>375×667</span></div>
+        <div class="capture-frame"><img src="captures/actual-follower.png" alt="跟随屏真实会话截图"></div>
+      </section>
+      <section class="screen master">
+        <div class="screen-label"><span>iPhone 16 Pro · 主屏</span><span>402×874</span></div>
+        <div class="capture-frame"><img src="captures/actual-master.png" alt="主屏真实会话截图"></div>
+      </section>
+    </main>
+  </body>
+</html>

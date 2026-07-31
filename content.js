@@ -82,8 +82,9 @@ document.addEventListener("click", (event) => {
   }).catch(() => {});
 }, true);
 
-window.addEventListener("resize", debounce(() => reportViewport(0, layoutGeneration), 120));
-reportViewport(0, layoutGeneration);
+window.addEventListener("resize", debounce(() => {
+  if (role !== "idle") reportViewport(0, layoutGeneration);
+}, 120));
 
 function reportViewport(attempt = 0, generation = layoutGeneration) {
   chrome.runtime.sendMessage({

@@ -104,8 +104,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-  if (!changeInfo.url) return;
-  enqueueSessionOperation(() => syncMasterNavigation(tabId, changeInfo.url)).catch(() => {});
+  if (changeInfo.url) {
+    enqueueSessionOperation(() => syncMasterNavigation(tabId, changeInfo.url)).catch(() => {});
+  }
+  if (changeInfo.status === "complete") {
+    enqueueSessionOperation(() => requestPaneViewport(tabId)).catch(() => {});
+  }
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
@@ -212,6 +216,7 @@ async function launchSession(payload = {}, anchorWindowId) {
 
   await setSession(session);
   await updatePaneRoles(session);
+  await Promise.all(Object.values(session.panes).map((pane) => requestPaneViewport(pane.tabId)));
   await chrome.windows.update(masterPane.windowId, { focused: true });
   await notifyLauncher(session);
   return session;
@@ -488,6 +493,16 @@ async function configurePane(tabId, viewport, layoutGeneration) {
   return true;
 }
 
+async function requestPaneViewport(tabId) {
+  const session = await getSession();
+  if (!session.panes?.[String(tabId)]) return false;
+  await chrome.tabs.sendMessage(tabId, {
+    type: "report-viewport",
+    layoutGeneration: session.layoutGeneration || 0
+  }).catch(() => {});
+  return true;
+}
+
 async function refineMeasuredLayout(session, panes) {
   const masterPane = panes.find((pane) => pane.tabId === session.masterTabId) || panes[0];
   const anchorWindow = await chrome.windows.get(masterPane.windowId);
@@ -622,7 +637,7 @@ function normalizeUrl(value) {
   const parsed = new URL(candidate);
 
   if (!/^https?:$/.test(parsed.protocol)) {
-    throw new Error("原型目前只支持 http 和 https 地址");
+    throw new Error("目前只支持 http 和 https 地址");
   }
 
   return parsed.href;
@@ -639,7 +654,7 @@ function normalizeDevices(value) {
     const height = Number(device?.height);
     if (!Number.isFinite(width) || width < 240 || width > 1000
       || !Number.isFinite(height) || height < 320 || height > 2000) {
-      throw new Error("屏幕尺寸超出原型支持范围");
+      throw new Error("屏幕尺寸超出支持范围");
     }
 
     return {

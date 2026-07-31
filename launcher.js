@@ -6,6 +6,7 @@ const DEVICE_PRESETS = [
 ];
 const REPO_URL = "https://github.com/holynova/multi-screen-view";
 const CUSTOM_DEVICES_KEY = "viewportRelayCustomDevices";
+const PRIVACY_CONSENT_KEY = "viewportRelayPrivacyConsentV1";
 const MAX_ACTIVE_DEVICES = 8;
 const IS_EXTENSION = Boolean(globalThis.chrome?.runtime?.id);
 
@@ -14,6 +15,7 @@ const deviceList = document.getElementById("device-list");
 const urlInput = document.getElementById("url");
 const formError = document.getElementById("form-error");
 const clickModeField = document.getElementById("click-mode");
+const dataConsentInput = document.getElementById("data-consent");
 const customDeviceName = document.getElementById("custom-device-name");
 const customDeviceWidth = document.getElementById("custom-device-width");
 const customDeviceHeight = document.getElementById("custom-device-height");
@@ -50,6 +52,12 @@ form.addEventListener("submit", async (event) => {
     return;
   }
 
+  if (!dataConsentInput.checked) {
+    showError("请先确认页面数据处理说明");
+    dataConsentInput.focus();
+    return;
+  }
+
   const devices = selectedDevices();
   const master = masterDeviceId;
   const clickMode = selectedClickMode();
@@ -76,6 +84,7 @@ form.addEventListener("submit", async (event) => {
   }
 
   setBusy(true);
+  await savePrivacyConsent(true);
   const response = await chrome.runtime.sendMessage({
     type: "launch-session",
     payload: { url: urlInput.value, devices, masterId: master, clickMode }
@@ -202,7 +211,11 @@ if (IS_EXTENSION) {
 }
 
 async function initialize() {
-  const customDevices = await loadCustomDevices();
+  const [customDevices, privacyConsent] = await Promise.all([
+    loadCustomDevices(),
+    loadPrivacyConsent()
+  ]);
+  dataConsentInput.checked = privacyConsent;
   devices = [...DEVICE_PRESETS.map((device) => ({ ...device })), ...customDevices];
   selectedDeviceIds = new Set(DEVICE_PRESETS
     .filter((device) => device.enabled)
@@ -217,6 +230,20 @@ async function initialize() {
   if (IS_EXTENSION) await refreshSession();
   else renderWebPreview();
 }
+
+dataConsentInput.addEventListener("change", async () => {
+  await savePrivacyConsent(dataConsentInput.checked).catch(() => {});
+  if (dataConsentInput.checked || !IS_EXTENSION || !activeSession) return;
+
+  const response = await chrome.runtime.sendMessage({ type: "close-session" })
+    .catch((error) => ({ ok: false, error: error.message }));
+  if (!response?.ok) {
+    showError(response?.error || "无法在撤回同意后关闭多屏窗口");
+    return;
+  }
+  renderSession(response.session);
+  statusCopy.textContent = "同意已撤回，运行中的多屏窗口已关闭。";
+});
 
 function renderDevices() {
   normalizeDeviceSelection();
@@ -353,6 +380,25 @@ async function saveCustomDevices() {
   } else {
     localStorage.setItem(CUSTOM_DEVICES_KEY, JSON.stringify(customDevices));
   }
+}
+
+async function loadPrivacyConsent() {
+  try {
+    if (IS_EXTENSION) {
+      return (await chrome.storage.local.get(PRIVACY_CONSENT_KEY))[PRIVACY_CONSENT_KEY] === true;
+    }
+    return localStorage.getItem(PRIVACY_CONSENT_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+async function savePrivacyConsent(value) {
+  if (IS_EXTENSION) {
+    await chrome.storage.local.set({ [PRIVACY_CONSENT_KEY]: Boolean(value) });
+    return;
+  }
+  localStorage.setItem(PRIVACY_CONSENT_KEY, String(Boolean(value)));
 }
 
 async function runSessionControl({ type, button, busyLabel, error }) {
