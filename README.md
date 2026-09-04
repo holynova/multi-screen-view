@@ -10,4 +10,4 @@ Passwords, file pickers, hidden fields, and one-time codes are never synchronize
 
 ![截图](screenshot.png)
 
-[Repo](https://github.com/holynova/multi-screen-view) · [Pages](https://holynova.github.io/multi-screen-view/)
+[Repo](https://github.com/holynova/multi-screen-view) · [Pages](https://holynova.github.io/multi-screen-view/) · [Cloudflare](https://multi-screen-view.xiaosang.cc/)

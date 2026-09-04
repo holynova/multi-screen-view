@@ -1,0 +1,16 @@
+.git/
+.github/
+.wrangler/
+.playwright-cli/
+.gitignore
+.nojekyll
+README.md
+LICENSE
+package.json
+package-lock.json
+pnpm-lock.yaml
+test/
+scripts/
+store-assets/
+store-listing/
+*.test.js
