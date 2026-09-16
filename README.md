@@ -11,3 +11,21 @@ Passwords, file pickers, hidden fields, and one-time codes are never synchronize
 ![截图](screenshot.png)
 
 [Repo](https://github.com/holynova/multi-screen-view) · [Pages](https://holynova.github.io/multi-screen-view/)
+
+## 安装到 Chrome
+
+1. 克隆或下载本仓库，保留根目录的 `manifest.json`。
+2. 打开 `chrome://extensions/`，开启开发者模式。
+3. 选择“加载已解压的扩展程序”，选中仓库根目录。
+4. 点击扩展按钮打开启动页，输入测试网址并选择视口。
+
+在主窗口中导航、滚动或点击，观察跟随窗口的响应。输入同步需手动开启；敏感字段仍会排除。GitHub Pages 是项目页面，不能替代安装扩展。
+
+## 开发与打包
+
+```bash
+npm test
+npm run package:extension
+```
+
+测试包含脚本语法、行为和商店素材校验。权限清单见 [manifest.json](manifest.json)，数据处理说明见 [隐私政策](privacy.html)。
