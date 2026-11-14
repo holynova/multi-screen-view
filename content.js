@@ -197,15 +197,15 @@ function renderRoleBadge(config) {
     pointerEvents: "none",
     boxShadow: syncPaused
       ? "inset 0 0 0 4px rgba(120, 113, 108, 0.84), inset 0 0 0 7px rgba(120, 113, 108, 0.16)"
-      : "inset 0 0 0 4px rgb(191, 61, 32), inset 0 0 0 7px rgba(225, 74, 42, 0.18)"
+      : "inset 0 0 0 4px rgb(213, 78, 98), inset 0 0 0 7px rgba(213, 78, 98, 0.18)"
   });
 
   const badge = document.createElement("div");
   badge.id = RELAY_BADGE_ID;
   const modeLabel = clickMode === "dom" ? "DOM" : "坐标";
   badge.textContent = syncPaused
-    ? `主屏 · ${config.targetWidth}×${config.targetHeight} · 同步暂停`
-    : `主屏 · ${config.targetWidth}×${config.targetHeight} · ${modeLabel}`;
+    ? `主屏 ${config.targetWidth}×${config.targetHeight}（同步暂停）`
+    : `主屏 ${config.targetWidth}×${config.targetHeight}（${modeLabel}）`;
   Object.assign(badge.style, {
     position: "fixed",
     top: "10px",
@@ -214,7 +214,7 @@ function renderRoleBadge(config) {
     pointerEvents: "none",
     padding: "7px 10px",
     borderRadius: "6px",
-    background: syncPaused ? "rgba(87, 83, 78, 0.94)" : "rgba(137, 41, 21, 0.95)",
+    background: syncPaused ? "rgba(87, 83, 78, 0.94)" : "rgba(136, 40, 56, 0.95)",
     color: "rgba(255, 255, 255, 0.92)",
     boxShadow: "0 4px 16px rgba(0, 0, 0, 0.18)",
     font: "600 12px/1.2 -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif",
@@ -236,7 +236,7 @@ function showClickMarker(x, y) {
     height: "22px",
     zIndex: "2147483646",
     pointerEvents: "none",
-    border: "2px solid rgb(225, 74, 42)",
+    border: "2px solid rgb(213, 78, 98)",
     borderRadius: "999px",
     transform: "translate(-50%, -50%) scale(0.45)",
     opacity: "0.9",

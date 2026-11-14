@@ -634,7 +634,12 @@ function normalizeUrl(value) {
   const candidate = /^[a-zA-Z][a-zA-Z\d+.-]*:\/\//.test(trimmed)
     ? trimmed
     : `https://${trimmed}`;
-  const parsed = new URL(candidate);
+  let parsed;
+  try {
+    parsed = new URL(candidate);
+  } catch {
+    throw new Error("网址格式不正确，请检查后重试");
+  }
 
   if (!/^https?:$/.test(parsed.protocol)) {
     throw new Error("目前只支持 http 和 https 地址");
