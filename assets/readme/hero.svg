@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-labelledby="title desc">
+  <title id="title">Viewport Relay / 多屏视口同步</title>
+  <desc id="desc">多尺寸网页同步测试扩展。用一个主窗口控制多个跟随窗口，支持同步导航、滚动、DOM 点击和标准表单输入。窗口标识可自由组合显示设备名称、分辨率和窗口角色；启动页还提供本地近期网址记录。</desc>
+  <rect width="1200" height="360" rx="28" fill="#18212a"/>
+  <path d="M0 310C250 280 410 342 650 300s350-18 550 20v40H0Z" fill="#d2a65f" opacity=".12"/>
+  <text x="58" y="52" fill="#5fa2d7" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18" letter-spacing="2.5">MASTER · FOLLOWERS · VIEWPORTS</text>
+  <path d="M58 70H710" stroke="#d2a65f" stroke-width="2" opacity=".6"/>
+  <text x="58" y="126" fill="#f1f3f2" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, sans-serif" font-size="52" font-weight="700">Viewport Relay / 多屏视口同步</text>
+  <text x="60" y="190" fill="#d2a65f" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, sans-serif" font-size="21">多尺寸网页同步测试扩展。用一个主窗口控制多个跟随窗口，支持同步导航、滚动、DOM</text><text x="60" y="220" fill="#d2a65f" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, sans-serif" font-size="21">点击和标准表单输入。窗口标识可自由组合显示设备名称、分辨率和窗口角色；启动页还提供本地近期网址记录。</text>
+    <g transform="translate(60 274)"><rect width="250" height="34" rx="17" fill="#5fa2d7"/><text x="18" y="23" fill="#18212a" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14">PROJECT-NATIVE README</text></g>
+  <g transform="translate(790 48)"><rect width="350" height="252" rx="16" fill="#f1f3f2"/><path d="M0 48h350" stroke="#d2a65f" stroke-width="2"/><circle cx="28" cy="25" r="6" fill="#5fa2d7"/><circle cx="50" cy="25" r="6" fill="#d2a65f"/><circle cx="72" cy="25" r="6" fill="#d5d6ce"/><rect x="28" y="78" width="105" height="142" rx="9" fill="#5fa2d7" opacity=".28"/><rect x="158" y="78" width="164" height="18" rx="9" fill="#d2a65f"/><rect x="158" y="114" width="128" height="13" rx="6" fill="#d2a65f" opacity=".8"/><rect x="158" y="145" width="150" height="13" rx="6" fill="#d2a65f" opacity=".65"/><rect x="158" y="176" width="92" height="13" rx="6" fill="#5fa2d7"/></g>
+</svg>
