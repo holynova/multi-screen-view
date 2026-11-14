@@ -6,8 +6,8 @@
   --ink: oklch(0.22 0.012 50);
   --muted: oklch(0.52 0.018 55);
   --hairline: oklch(0.85 0.012 70);
-  --accent: oklch(0.61 0.19 36);
-  --accent-dark: oklch(0.43 0.135 34);
+  --accent: oklch(0.61 0.17 15);
+  --accent-dark: oklch(0.43 0.13 15);
   --error: oklch(0.52 0.2 28);
   --radius-sm: 4px;
   --radius-md: 8px;
@@ -110,10 +110,9 @@ button {
 .eyebrow {
   margin: 0 0 8px;
   color: var(--accent-dark);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.12em;
-  text-transform: uppercase;
 }
 
 h1,
@@ -134,16 +133,16 @@ h1 {
   max-width: 650px;
   margin-bottom: 0;
   color: var(--muted);
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.75;
   text-wrap: pretty;
 }
 
 .workspace {
   overflow: hidden;
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-lg);
   background: var(--surface);
-  box-shadow: 0 1px 3px rgba(43, 35, 28, 0.12), 0 14px 38px rgba(43, 35, 28, 0.07);
 }
 
 .url-section,
@@ -186,7 +185,7 @@ h2 {
 .section-heading p {
   margin-bottom: 0;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.65;
 }
 
@@ -208,7 +207,7 @@ h2 {
 
 .field > span {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.1em;
 }
@@ -227,7 +226,7 @@ input[type="url"] {
 
 input[type="url"]:focus-visible {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px oklch(0.61 0.19 36 / 0.14);
+  box-shadow: 0 0 0 3px oklch(0.61 0.17 15 / 0.14);
 }
 
 .primary-button,
@@ -257,7 +256,7 @@ input[type="url"]:focus-visible {
   height: 7px;
   border-radius: 999px;
   background: var(--accent);
-  box-shadow: 0 0 0 3px oklch(0.61 0.19 36 / 0.2);
+  box-shadow: 0 0 0 3px oklch(0.61 0.17 15 / 0.2);
 }
 
 .secondary-button {
@@ -277,7 +276,7 @@ input[type="url"]:focus-visible {
 .master-choice input:focus-visible + span,
 .screen-toggle input:focus-visible + span,
 .mode-choice input:focus-visible + span {
-  outline: 3px solid oklch(0.61 0.19 36 / 0.24);
+  outline: 3px solid oklch(0.61 0.17 15 / 0.24);
   outline-offset: 2px;
 }
 
@@ -293,7 +292,7 @@ input[type="url"]:focus-visible {
 
 .mode-label {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.1em;
 }
@@ -332,11 +331,11 @@ input[type="url"]:focus-visible {
 
 .mode-choice strong {
   color: var(--ink);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .mode-choice small {
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.4;
 }
 
@@ -379,7 +378,7 @@ input[type="url"]:focus-visible {
   height: 18px;
   margin-top: 1px;
   border: 1px solid var(--hairline);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   background: var(--surface);
   box-shadow: inset 0 0 0 2px var(--surface);
 }
@@ -401,7 +400,7 @@ input[type="url"]:focus-visible {
 }
 
 .consent-choice input:focus-visible + span {
-  outline: 3px solid oklch(0.61 0.19 36 / 0.24);
+  outline: 3px solid oklch(0.61 0.17 15 / 0.24);
   outline-offset: 2px;
 }
 
@@ -413,7 +412,7 @@ input[type="url"]:focus-visible {
 .data-consent p {
   margin: 0 0 0 28px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.65;
 }
 
@@ -491,7 +490,7 @@ button:disabled {
 }
 
 .screen-toggle input:checked + span {
-  background: oklch(0.9 0.06 44);
+  background: oklch(0.9 0.06 15);
 }
 
 .screen-toggle input:checked + span::after {
@@ -531,7 +530,7 @@ button:disabled {
 
 .dimensions span {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .master-choice {
@@ -567,7 +566,7 @@ button:disabled {
   border-radius: var(--radius-sm);
   color: var(--muted);
   background: transparent;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   cursor: pointer;
   transition: color 140ms ease-out, background-color 140ms ease-out, transform 120ms ease-out;
@@ -581,10 +580,8 @@ button:disabled {
   display: grid;
   gap: 14px;
   margin: 18px 0 0 46px;
-  padding: 16px;
-  border-radius: var(--radius-md);
-  background: var(--canvas);
-  box-shadow: inset 0 0 0 1px var(--hairline);
+  padding: 18px 0 0;
+  border-top: 1px solid var(--hairline);
 }
 
 .custom-device-copy {
@@ -595,12 +592,12 @@ button:disabled {
 }
 
 .custom-device-copy strong {
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .custom-device-copy span {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .custom-device-fields {
@@ -617,7 +614,7 @@ button:disabled {
 
 .compact-field > span {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.08em;
 }
@@ -638,7 +635,7 @@ button:disabled {
 
 .compact-field input:focus-visible {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px oklch(0.61 0.19 36 / 0.14);
+  box-shadow: 0 0 0 3px oklch(0.61 0.17 15 / 0.14);
 }
 
 .dimension-separator {
@@ -646,7 +643,7 @@ button:disabled {
   padding-bottom: 12px;
   color: var(--muted);
   font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
-  font-size: 11px;
+  font-size: 12px;
   text-align: center;
 }
 
@@ -659,7 +656,7 @@ button:disabled {
   min-height: 17px;
   margin: -4px 0 -4px;
   color: var(--error);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.5;
 }
 
@@ -698,7 +695,7 @@ button:disabled {
 .scope-note > span {
   color: var(--ink);
   font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.08em;
 }
@@ -714,7 +711,7 @@ button:disabled {
   gap: 20px;
   padding: 22px 4px 0;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .site-footer nav {

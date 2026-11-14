@@ -48,12 +48,12 @@ form.addEventListener("submit", async (event) => {
   clearError();
 
   if (!IS_EXTENSION) {
-    window.location.href = REPO_URL;
+    window.open(REPO_URL, "_blank", "noreferrer");
     return;
   }
 
   if (!dataConsentInput.checked) {
-    showError("请先确认页面数据处理说明");
+    showError("请先勾选同意页面数据处理说明");
     dataConsentInput.focus();
     return;
   }
@@ -115,12 +115,15 @@ clickModeField.addEventListener("change", async (event) => {
   renderSession(response.session);
 });
 
-closeButton.addEventListener("click", () => runSessionControl({
-  type: "close-session",
-  button: closeButton,
-  busyLabel: "正在关闭",
-  error: "无法关闭多屏窗口"
-}));
+closeButton.addEventListener("click", () => {
+  if (!window.confirm("确定要关闭全部多屏窗口吗？")) return;
+  runSessionControl({
+    type: "close-session",
+    button: closeButton,
+    busyLabel: "正在关闭",
+    error: "无法关闭多屏窗口"
+  });
+});
 
 focusMasterButton.addEventListener("click", () => runSessionControl({
   type: "focus-master",
@@ -295,7 +298,7 @@ function renderWebPreview() {
   document.body.classList.add("is-web-preview");
   urlInput.readOnly = true;
   submitButton.lastChild.textContent = " 获取扩展";
-  statusCopy.textContent = "当前为网页预览。安装 Chrome 扩展后即可启动多屏同步。";
+  statusCopy.innerHTML = '当前为网页预览。按 <a href="https://github.com/holynova/multi-screen-view#安装扩展">安装说明</a> 安装 Chrome 扩展后即可启动多屏同步。';
   setSessionControlsDisabled(true);
 }
 
